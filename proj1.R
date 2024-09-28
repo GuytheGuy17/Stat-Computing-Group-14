@@ -22,7 +22,8 @@ for(punct in punct_to_remove) {
   a <- split_punct(a, punct)
 } 
 
-# Function generating the m (=1000) most commonly occurring words for a vector
+# Function generating the m(=1000) most commonly occurring words for a vector
+
 most_common_words <- function(vec, m = 1000) {
   # Convert words to lowercase 
   vec <- tolower(vec)
@@ -44,7 +45,8 @@ most_common_words <- function(vec, m = 1000) {
   most_common_indices <- c()
   for(ind in c(1:length(occurrences))){
     if(occurrences[ind] >= threshold_frequency){
-      most_common_indices = append(most_common_indices, ind)
+      most_common_indices <- append(most_common_indices, ind)
+
     }
   }
   
@@ -52,11 +54,83 @@ most_common_words <- function(vec, m = 1000) {
   b <- c()
   
   for(ind in most_common_indices){
-    b = append(b, unique[ind])
+    b <- append(b, unique[ind])
+
   }
   
   return(b)
 }
 
 length(most_common_words(a))
+
+b <- most_common_words(a)
+
+create_M <- function(a, b, mlag = 4) {
+  match_ind <- match(a, b)
+  
+  n <- length(a)
+  
+  M <- matrix(NA, nrow = n - mlag, ncol = mlag + 1)
+  
+  for(i in 1:(mlag + 1)) {
+    M[, i] <- match_ind[1:(n - mlag) + i - 1]
+  }
+  
+  return(M)
+}
+
+M <- create_M(tolower(a), b, 4)
+
+# 8.
+simulate_text <- function(token_matrix, words, nw = 50, mlag = 4) {
+  output <- integer(nw)
+  
+  first_column <- token_matrix[,1]
+  valid_tokens <- first_column[!is.na(first_column)]
+  output[1] <- sample(valid_tokens, 1)
+  
+  for (i in 2:nw) {
+    for (j in (mlag):1) if (i>j) {
+      context <- output[(i-j):(i-1)]
+      
+      matched_rows <- which(apply(token_matrix[,1:j, drop=FALSE], 1, function(x) all(x == context)))
+      
+      if (length(matched_rows) > 0) {
+        next_tokens <- token_matrix[matched_rows, j+1]
+        token_table <- table(next_tokens)
+        
+        token_table <- token_table[!is.na(names(token_table))]
+        probs <- as.vector(token_table) / sum(token_table)
+        
+        if (length(token_table) > 0) {
+          output[i] <- as.integer(sample(names(token_table), 1, prob = probs))
+          break 
+        }
+      }
+    }
+    
+    if (is.na(output[i])) {
+      output[i] <- sample(valid_tokens, 1)
+    }
+  }
+  
+  return(words[output])
+}
+
+generated_text <- simulate_text(M, b, mlag = 4)
+cat(generated_text, sep=" ")
+
+
+# Function generating a section of words of a given size(=50), by independently
+# drawing each word from a fixed collection of words with their associated weights
+
+frequency_simulation <- function(words, weights, size = 50){
+  n <- length(weights)
+  
+  j <- sample(1:n, size, replace = TRUE, prob = weights)
+  
+  section <- words[j]
+  
+  return(paste(section, collapse = " "))
+}
 
