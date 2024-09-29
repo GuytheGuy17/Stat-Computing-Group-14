@@ -42,21 +42,10 @@ most_common_words <- function(vec, m = 1000) {
   threshold_frequency <- sorted_occurrences[m]
   
   # Store the indices that beat the threshold frequency 
-  most_common_indices <- c()
-  for(ind in c(1:length(occurrences))){
-    if(occurrences[ind] >= threshold_frequency){
-      most_common_indices <- append(most_common_indices, ind)
-
-    }
-  }
+  most_common_indices <- which(occurrences >= threshold_frequency)
   
   # Store the words corresponding to these indices (top 1000 words)
-  b <- c()
-  
-  for(ind in most_common_indices){
-    b <- append(b, unique[ind])
-
-  }
+  b <- unique[most_common_indices]
   
   return(b)
 }
@@ -93,7 +82,16 @@ simulate_text <- function(token_matrix, words, nw = 50, mlag = 4) {
     for (j in (mlag):1) if (i>j) {
       context <- output[(i-j):(i-1)]
       
-      matched_rows <- which(apply(token_matrix[,1:j, drop=FALSE], 1, function(x) all(x == context)))
+      test <- matrix(NA, nrow = NROW(token_matrix), ncol = j + 1)
+      test[, 1] <- TRUE
+      
+      for(k in 1:j) {
+        test[, k + 1] <- !is.na(token_matrix[, k]) & token_matrix[, k] == context[k] & test[, k]
+      }
+      
+      matched_rows <- which(test[, j + 1])
+      
+      # matched_rows <- which(apply(token_matrix[,1:j, drop=FALSE], 1, function(x) all(x == context)))
       
       if (length(matched_rows) > 0) {
         next_tokens <- token_matrix[matched_rows, j+1]
@@ -102,14 +100,14 @@ simulate_text <- function(token_matrix, words, nw = 50, mlag = 4) {
         token_table <- token_table[!is.na(names(token_table))]
         probs <- as.vector(token_table) / sum(token_table)
         
-        if (length(token_table) > 0) {
+        if (length(token_table) > 1) {
           output[i] <- as.integer(sample(names(token_table), 1, prob = probs))
           break 
         }
       }
     }
     
-    if (is.na(output[i])) {
+    if (is.na(output[i]) | output[i] == 0) {
       output[i] <- sample(valid_tokens, 1)
     }
   }
