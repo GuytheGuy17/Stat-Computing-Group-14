@@ -120,7 +120,6 @@ simulate_text <- function(token_matrix, words, nw = 50, mlag = 4) {
 generated_text <- simulate_text(M, b, mlag = 4)
 cat(generated_text, sep=" ")
 
-
 # Function generating a section of words of a given size(=50), by independently
 # drawing each word from a fixed collection of words with their associated weights
 
@@ -134,3 +133,33 @@ frequency_simulation <- function(words, weights, size = 50){
   return(paste(section, collapse = " "))
 }
 
+# calculate the weights of each word
+freq <- tabulate(match(tolower(a), b))
+
+frequency_simulation(tolower(a), freq, size = 50)
+
+# find the modified b vector
+low <- tolower(a)
+
+# loop over b
+b_mod <- lapply(b, function(x) {
+  # find all the matches in the lowercase text and get the original occurances of them
+  matches <- a[which(low == x)]
+  
+  # sort this and find the most common occurance
+  most_common <- sort(table(matches), decreasing = TRUE)[1]
+  
+  names(most_common)
+}) |>
+  unlist()
+
+# add whitespace in front of non punctuation
+b_mod[!b_mod %in% punct_to_remove] <- paste0(' ', b_mod[!b_mod %in% punct_to_remove])
+
+# example of generating text with modified b
+generated_text <- simulate_text(M, b_mod, mlag = 4)
+
+# need to remove the leading whitespace from first letter
+generated_text[1] <- gsub(' ', '', generated_text[1])
+
+cat(generated_text, sep = '')
