@@ -2,6 +2,15 @@
 a <- scan("https://www.gutenberg.org/files/4300/4300-0.txt", what="character", skip=73, nlines=32858-73, fileEncoding="UTF-8")
 a <- gsub("_(","", a, fixed=TRUE) ## remove "_("
 
+#' split_punct
+#' 
+#' @description A function to search for punctuation marks in a word vector, remove them 
+#' from their associated word and input them as a new unique entry in the word vector.
+#' @param vec The word vector to search for punctuation marks.
+#' @param char The punctuation marks that are being searched for in the word vector.
+#' @return A word vector with the punctuation marks of the original word vector
+#' marked as unique inputs afer the word they were originally in.
+
 split_punct <- function(vec, char) {
   esc_char <- paste0('\\', char)
   
@@ -22,7 +31,12 @@ for(punct in punct_to_remove) {
   a <- split_punct(a, punct)
 } 
 
-# Function generating the m(=1000) most commonly occurring words for a vector
+#' most_common_words
+#' 
+#' @description Function generating the m(=1000) most commonly occurring words for a vector.
+#' @param vec A word vector the function is searching over.
+#' @param m The number of most common words being identified.
+#' @return A vector containing the m most common words in the input word vector.
 
 most_common_words <- function(vec, m = 1000) {
   # Convert words to lowercase 
