@@ -176,9 +176,16 @@ simulate_text <- function(full_text, words, nw = 50, mlag = 4) {
 generated_text_1 <- simulate_text(a, b, mlag = 4)
 cat(generated_text_1, sep=" ")
 
-# Function generating a section of words of a given size(=50), by independently
-# drawing each word from a fixed collection of words with their associated weights
-
+#' frequency_simulation
+#' 
+#' @description # Function generating a section of words of a given size(=50), 
+#' by independently drawing each word from a fixed collection of words 
+#' with their associated weights/probability of being sampled.
+#' @param words The word space to generate the simulation from.
+#' @param weights The associated weights of the words we are simulating from.
+#' @param size The size of the text we are constructing with this simulation
+#' @return A text simulated according to the procedure in the description.
+ 
 frequency_simulation <- function(words, weights, size = 50){
   n <- length(weights)
   
@@ -199,10 +206,10 @@ low <- tolower(a)
 
 # loop over b
 b_mod <- sapply(b, function(x) {
-  # find all the matches in the lowercase text and get the original occurances of them
+  # find all the matches in the lowercase text and get the original occurrences of them
   matches <- a[which(low == x)]
   
-  # sort this and find the most common occurance
+  # sort this and find the most common occurrence
   most_common <- sort(table(matches), decreasing = TRUE)[1]
   
   names(most_common)
