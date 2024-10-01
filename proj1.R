@@ -196,14 +196,15 @@ frequency_simulation <- function(words, weights, size = 50){
   return(paste(section, collapse = " "))
 }
 
-# calculate the weights of each word
-freq <- tabulate(match(tolower(a), b))
-
-frequency_simulation(tolower(a), freq, size = 50)
-
-# find the modified b vector
+# convert a to lowercase
 low <- tolower(a)
 
+# calculate the weights of each word
+freq <- tabulate(match(low, b))
+
+frequency_simulation(low, freq, size = 50)
+
+# find the modified b vector
 # loop over b
 b_mod <- sapply(b, function(x) {
   # find all the matches in the lowercase text and get the original occurrences of them
