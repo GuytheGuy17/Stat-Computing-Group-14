@@ -12,14 +12,18 @@ a <- gsub("_(","", a, fixed=TRUE) ## remove "_("
 #' marked as unique inputs afer the word they were originally in.
 
 split_punct <- function(vec, char) {
+  # escape the character as grep interprets some punctuation as regex
   esc_char <- paste0('\\', char)
   
   ii <- grep(esc_char, vec)
   
+  # initialise output vector
   out <- vector(mode = 'character', length = length(ii) + length(vec))
   
+  # store the (unescaped) character in the right place
   out[ii + 1:length(ii)] <- char
   
+  # add the rest of the tokens back in, with the character removed
   out[-c(ii + 1:length(ii))] <- gsub(esc_char, '', vec)
   
   return(out)
@@ -55,6 +59,9 @@ most_common_words <- function(vec, m = 1000) {
   sorted_occurrences <- occurrences[order(occurrences, decreasing = TRUE)]
   threshold_frequency <- sorted_occurrences[m]
   
+  # Print the threshold frequency
+  print(paste('The threshold found was: ', threshold_frequency))
+  
   # Store the indices that beat the threshold frequency 
   most_common_indices <- which(occurrences >= threshold_frequency)
   
@@ -64,9 +71,9 @@ most_common_words <- function(vec, m = 1000) {
   return(b)
 }
 
-length(most_common_words(a))
-
 b <- most_common_words(a)
+
+length(b)
 
 create_M <- function(a, b, mlag = 4) {
   match_ind <- match(a, b)
