@@ -164,7 +164,7 @@ frequency_simulation(tolower(a), freq, size = 50)
 low <- tolower(a)
 
 # loop over b
-b_mod <- lapply(b, function(x) {
+b_mod <- sapply(b, function(x) {
   # find all the matches in the lowercase text and get the original occurances of them
   matches <- a[which(low == x)]
   
@@ -172,8 +172,7 @@ b_mod <- lapply(b, function(x) {
   most_common <- sort(table(matches), decreasing = TRUE)[1]
   
   names(most_common)
-}) |>
-  unlist()
+})
 
 # add whitespace in front of non punctuation
 b_mod[!b_mod %in% punct_to_remove] <- paste0(' ', b_mod[!b_mod %in% punct_to_remove])
