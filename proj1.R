@@ -92,7 +92,9 @@ create_M <- function(a, b, mlag = 4) {
 M <- create_M(tolower(a), b, 4)
 
 # 8.
-simulate_text <- function(token_matrix, words, nw = 50, mlag = 4) {
+simulate_text <- function(a, words, nw = 50, mlag = 4) {
+  token_matrix <- create_M(tolower(a), b, mlag)
+  
   output <- integer(nw)
   
   first_column <- token_matrix[,1]
@@ -136,7 +138,7 @@ simulate_text <- function(token_matrix, words, nw = 50, mlag = 4) {
   return(words[output])
 }
 
-generated_text <- simulate_text(M, b, mlag = 4)
+generated_text <- simulate_text(a, b, mlag = 4)
 cat(generated_text, sep=" ")
 
 # Function generating a section of words of a given size(=50), by independently
