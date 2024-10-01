@@ -1,4 +1,5 @@
 # setwd("put/your/local/repo/location/here") ## comment out of submitted
+setwd("~/Stat-Computing-Group-14")
 a <- scan("4300-0.txt", what="character", skip=73, nlines=32858-73, fileEncoding="UTF-8")
 a <- gsub("_(","", a, fixed=TRUE) ## remove "_("
 
@@ -92,8 +93,8 @@ create_M <- function(a, b, mlag = 4) {
 M <- create_M(tolower(a), b, 4)
 
 # 8.
-simulate_text <- function(a, words, nw = 50, mlag = 4) {
-  token_matrix <- create_M(tolower(a), b, mlag)
+simulate_text <- function(full_text, words, nw = 50, mlag = 4) {
+  token_matrix <- create_M(tolower(full_text), tolower(gsub(' ', '',words)), mlag)
   
   output <- integer(nw)
   
@@ -138,8 +139,8 @@ simulate_text <- function(a, words, nw = 50, mlag = 4) {
   return(words[output])
 }
 
-generated_text <- simulate_text(a, b, mlag = 4)
-cat(generated_text, sep=" ")
+generated_text_1 <- simulate_text(a, b, mlag = 4)
+cat(generated_text_1, sep=" ")
 
 # Function generating a section of words of a given size(=50), by independently
 # drawing each word from a fixed collection of words with their associated weights
@@ -178,9 +179,9 @@ b_mod <- lapply(b, function(x) {
 b_mod[!b_mod %in% punct_to_remove] <- paste0(' ', b_mod[!b_mod %in% punct_to_remove])
 
 # example of generating text with modified b
-generated_text <- simulate_text(M, b_mod, mlag = 4)
+generated_text_2 <- simulate_text(a, b_mod, mlag = 4)
 
 # need to remove the leading whitespace from first letter
-generated_text[1] <- gsub(' ', '', generated_text[1])
+generated_text_2[1] <- gsub(' ', '', generated_text_2[1])
 
-cat(generated_text, sep = '')
+cat(generated_text_2, sep = '')
