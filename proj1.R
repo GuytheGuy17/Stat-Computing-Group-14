@@ -223,7 +223,8 @@ b_mod <- sapply(b, function(x) {
   # Find all the matches in the lowercase text and get the original occurrences of them
   matches <- a[which(low == x)]
   
-  # Sort this and find the most common occurrence
+  # Sort this and find the most common occurrence 
+  # find the most common form of the word rather than just comparing capital/non-capital
   most_common <- sort(table(matches), decreasing = TRUE)[1]
   
   names(most_common)
