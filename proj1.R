@@ -73,7 +73,7 @@ most_common_words <- function(vec, m = 1000) {
   threshold_frequency <- sorted_occurrences[m]
   
   # Print the threshold frequency
-  print(paste('The threshold frequency found was: ', threshold_frequency))
+  print(paste('The threshold frequency found was:', threshold_frequency))
   
   # Store the indices that beat the threshold frequency 
   most_common_indices <- which(occurrences >= threshold_frequency)
@@ -113,6 +113,8 @@ create_M <- function(full_text, words, mlag = 4) {
 }
 
 M <- create_M(tolower(a), b, 4)
+
+head(M)
 
 #' simulate_text
 #' 
@@ -206,7 +208,7 @@ frequency_simulation <- function(words, weights, size = 50){
   
   section <- words[j]
   
-  return(paste(section, collapse = " "))
+  return(section)
 }
 
 # Convert a to lowercase
@@ -215,16 +217,18 @@ low <- tolower(a)
 # Calculate the weights of each word
 freq <- tabulate(match(low, b))
 
-frequency_simulation(low, freq, size = 50)
+freq_generated_text <- frequency_simulation(low, freq, size = 50)
 
-# Find the modified b vector
+cat(freq_generated_text, collapse = " ")
+
+## Find the modified b vector
 # Loop over b
 b_mod <- sapply(b, function(x) {
   # Find all the matches in the lowercase text and get the original occurrences of them
   matches <- a[which(low == x)]
   
   # Sort this and find the most common occurrence 
-  # find the most common form of the word rather than just comparing capital/non-capital
+  # find the most common form of the word rather than just comparing capital/non-capital cases
   most_common <- sort(table(matches), decreasing = TRUE)[1]
   
   names(most_common)
