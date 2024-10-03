@@ -1,7 +1,7 @@
 #' Group Members: 
 #' Guy McClennan - s2036567
 #' Alexandru Girban - s2148980
-#' Louis Bennett - 
+#' Louis Bennett - s2744241
 #' 
 #' This project was completed largely collaboratively with each member contributing 
 #' ideas for a range of answers. Then it would be left to one person to implement 
@@ -11,8 +11,7 @@
 #' text for parts 2 and 3 and created the base simulate_text function code for Q8 with 
 #' the group as a whole working on ways to optimise this function.
 
-# setwd("put/your/local/repo/location/here") ## comment out of submitted
-setwd("~/Stat-Computing-Group-14")
+# setwd("~/Stat-Computing-Group-14")
 a <- scan("4300-0.txt", what="character", skip=73, nlines=32858-73, fileEncoding="UTF-8")
 a <- gsub("_(","", a, fixed=TRUE) ## remove "_("
 
