@@ -43,6 +43,9 @@ create_t0 <- function(days, deaths, max_duration = 80) {
   # Calculate initial guesses for infection days
   t0 <- death_days - durations
   
+  # set negative values to 0
+  t0[t0 <= 0] <- 0
+  
   return(t0)
 }
 
@@ -59,20 +62,23 @@ deconv <- function(t, deaths, n.rep = 100, bs = FALSE, t0 = NULL) {
   P_hist <- numeric(length = n.rep)
   inft <- matrix(nrow = length(ext_deaths), ncol = n.rep)
   
-  # initialise days_opt - move this inside the loop and do dependent on j later
-  days_opt <- c(-4, -2, -1, 1, 2, 4)
-  
-  # calculate the probs for drawing later
+  # calculate the probs for drawing from later
   probs <- calc_days_to_death_probs()
   
-  # loop 
   for(j in 1:n.rep) {
+    # initialise options for days
+    if(j <= 50) {
+      days_opt <- c(-8, -4, -2, -1, 1, 2, 4, 8)
+    } else if(j <= 75) {
+      days_opt <- c(-4, -2, -1, 1, 2, 4)
+    } else {
+      days_opt <- c(-2, -1, 1, 2)
+    }
+    
     days_to_death <- sample(1:80, length(t0), replace = TRUE, prob = probs)
     
-    pred_deaths <- tabulate(t0 + days_to_death)
-    
-    # extend pred_deaths to 350 to match the length
-    pred_deaths <- c(pred_deaths, rep(0, length = 350 - length(pred_deaths)))
+    # create pred_deaths - nbins 350 to match the length
+    pred_deaths <- tabulate(t0 + days_to_death, nbins = 350)
     
     # calculate the P
     P <- pearson_stat_vec(pred_deaths, ext_deaths)
@@ -82,6 +88,7 @@ deconv <- function(t, deaths, n.rep = 100, bs = FALSE, t0 = NULL) {
     
     # sort both vectors in same ordering
     t0_sorted <- t0[ordering]
+    
     days_to_death_sorted <- days_to_death[ordering]
     
     # sample random changes
@@ -92,11 +99,12 @@ deconv <- function(t, deaths, n.rep = 100, bs = FALSE, t0 = NULL) {
       t0_proposed <- t0_sorted
       pred_deaths_proposed <- pred_deaths
       
-      # add random change
-      t0_proposed[i] <- t0_sorted[i] + rand_change[i]
+      # add random change - don't want to propose a negative number of days so replace with 0
+      t0_proposed[i] <- max(t0_sorted[i] + rand_change[i], 0)
       
       # recalcuate day of death and the previous day of death
       proposed_death_day <- t0_proposed[i] + days_to_death_sorted[i]
+      
       old_death_day <- t0_sorted[i] + days_to_death_sorted[i]
       
       # inject these into the predicted deaths
@@ -119,6 +127,12 @@ deconv <- function(t, deaths, n.rep = 100, bs = FALSE, t0 = NULL) {
     
     t0 <- t0_sorted[reordering]
     
+    # create plot
+    plot(x = 1:350, y = ext_deaths, type = 'l', xlab = 'Days', ylab = 'Count')
+    lines(x = 1:350, y = tabulate(t0, nbins = 350), col = 'blue')
+    lines(x = 1:350, y = pred_deaths, col = 'red')
+    legend(x = 175, y = 900, legend = c('Estimated Incidence', 'Simulated Deaths', 'Real Deaths'), fill = c('blue', 'red', 'black'))
+    
     # save current state of variables
     P_hist[j] <- P
     inft[, j] <- pred_deaths
@@ -134,7 +148,18 @@ deconv <- function(t, deaths, n.rep = 100, bs = FALSE, t0 = NULL) {
 }
 
 # just using n.rep = 50 as example
-run <- deconv(initial_data$julian, initial_data$nhs, n.rep = 50)
+run <- deconv(initial_data$julian, initial_data$nhs, n.rep = 200)
+
+
+# create plot - need to add confidence intervals into this once bootstrapping
+cases <- tabulate(run$t0, nbins = 350)
+plot(x = 1:350, y = cases, type = 'l', xlab = 'Days', ylab = 'Count')
+lines(x = initial_data$julian, y = initial_data$nhs, col = 'blue')
+abline(v = 84, lty = 'dashed')
+text(x = 84, y = max(cases), labels = 'UK Lockdown', pos = 4)
+legend(x = 350, y = max(cases), legend = c('Estimated Incidences', 'Deaths'), col = c('black', 'blue'), lty = 'solid', xjust = 1, yjust = 1, cex = 0.8)
+
+## cases coming down before lockdown
 
 ## comparison of 2 pearson stat functions 
 t <- Sys.time()
