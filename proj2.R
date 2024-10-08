@@ -150,7 +150,6 @@ deconv <- function(t, deaths, n.rep = 100, bs = FALSE, t0 = NULL) {
 # just using n.rep = 50 as example
 run <- deconv(initial_data$julian, initial_data$nhs, n.rep = 200)
 
-
 # create plot - need to add confidence intervals into this once bootstrapping
 cases <- tabulate(run$t0, nbins = 350)
 plot(x = 1:350, y = cases, type = 'l', xlab = 'Days', ylab = 'Count')
@@ -162,10 +161,17 @@ legend(x = 350, y = max(cases), legend = c('Estimated Incidences', 'Deaths'), co
 ## cases coming down before lockdown
 
 ## comparison of 2 pearson stat functions 
+days_to_death <- sample(1:80, length(t0), replace = TRUE, prob = calc_days_to_death_probs())
+t0 <- create_t0(initial_data$julian, initial_data$nhs)
+pred_deaths <- tabulate(t0 + days_to_death, nbins = 350)
+
+ext_deaths <- numeric(length = 350)
+ext_deaths[initial_data$julian] <- initial_data$nhs
+
 t <- Sys.time()
-lapply(1:100000, \(x) pearson_stat_vec(pred_deaths, ext_deaths))
+test <- lapply(1:100000, \(x) pearson_stat_vec(pred_deaths, ext_deaths))
 print(Sys.time() - t)
 
 t <- Sys.time()
-lapply(1:100000, \(x) pearson_stat(pred_deaths, ext_deaths))
+test2 <- lapply(1:100000, \(x) pearson_stat(pred_deaths, ext_deaths))
 print(Sys.time() - t)
