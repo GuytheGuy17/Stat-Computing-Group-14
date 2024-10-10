@@ -1,6 +1,6 @@
 
 ## File for second project
-setwd("~/Stat-Computing-Group-14")
+# setwd("~/Stat-Computing-Group-14")
 
 # Only using the first 150 rows of the data for this practical.
 initial_data <- read.table("engcov.txt", nrows = 150)
@@ -8,16 +8,6 @@ initial_data <- read.table("engcov.txt", nrows = 150)
 # Define the modified Pearson statistic to use as a metric for the goodness of fit
 # observed_data, simulated_data represent the vectors we are computing the Pearson statistic for 
 pearson_stat <- function(observed_data, simulated_data) {
-  sum <- 0
-  
-  for (i in 1:length(observed_data)){
-    sum <- sum + ((observed_data[i] - simulated_data[i]) ^ 2) / (max(1, simulated_data[i]))
-  }
-  
-  return(sum)
-}
-
-pearson_stat_vec <- function(observed_data, simulated_data) {
   denom <- simulated_data
   denom[simulated_data <= 1] <- 1
   
@@ -50,6 +40,10 @@ create_t0 <- function(days, deaths, max_duration = 80) {
 }
 
 deconv <- function(t, deaths, n.rep = 100, bs = FALSE, t0 = NULL) {
+  # check inputs for errors
+  if(length(t) != length(deaths)) stop('Vector of days should be the same length as the vector of deaths')
+  if(bs == TRUE & is.null(t0)) stop('If `bs` == TRUE, then supply a converged t0 vector')
+  
   if(is.null(t0)) {
     t0 <- create_t0(t, deaths)
   }
@@ -81,7 +75,7 @@ deconv <- function(t, deaths, n.rep = 100, bs = FALSE, t0 = NULL) {
     pred_deaths <- tabulate(t0 + days_to_death, nbins = 350)
     
     # calculate the P
-    P <- pearson_stat_vec(pred_deaths, ext_deaths)
+    P <- pearson_stat(pred_deaths, ext_deaths)
     
     # sample without replacement to find the random ordering
     ordering <- sample(1:length(t0), length(t0), replace = FALSE)
@@ -111,7 +105,7 @@ deconv <- function(t, deaths, n.rep = 100, bs = FALSE, t0 = NULL) {
       pred_deaths_proposed[proposed_death_day] <- pred_deaths_proposed[proposed_death_day] + 1
       pred_deaths_proposed[old_death_day] <- pred_deaths_proposed[old_death_day] - 1
       
-      P_proposed <- pearson_stat_vec(pred_deaths_proposed, ext_deaths)
+      P_proposed <- pearson_stat(pred_deaths_proposed, ext_deaths)
       
       # if P_proposed < P then update all our vectors (strictly less than - in case of equality don't update for efficiency)
       if(P_proposed < P) {
@@ -148,7 +142,7 @@ deconv <- function(t, deaths, n.rep = 100, bs = FALSE, t0 = NULL) {
 }
 
 # just using n.rep = 50 as example
-run <- deconv(initial_data$julian, initial_data$nhs, n.rep = 200)
+run <- deconv(initial_data$julian, initial_data$nhs, n.rep = 100)
 
 # create plot - need to add confidence intervals into this once bootstrapping
 cases <- tabulate(run$t0, nbins = 350)
@@ -159,19 +153,3 @@ text(x = 84, y = max(cases), labels = 'UK Lockdown', pos = 4)
 legend(x = 350, y = max(cases), legend = c('Estimated Incidences', 'Deaths'), col = c('black', 'blue'), lty = 'solid', xjust = 1, yjust = 1, cex = 0.8)
 
 ## cases coming down before lockdown
-
-## comparison of 2 pearson stat functions 
-days_to_death <- sample(1:80, length(t0), replace = TRUE, prob = calc_days_to_death_probs())
-t0 <- create_t0(initial_data$julian, initial_data$nhs)
-pred_deaths <- tabulate(t0 + days_to_death, nbins = 350)
-
-ext_deaths <- numeric(length = 350)
-ext_deaths[initial_data$julian] <- initial_data$nhs
-
-t <- Sys.time()
-test <- lapply(1:100000, \(x) pearson_stat_vec(pred_deaths, ext_deaths))
-print(Sys.time() - t)
-
-t <- Sys.time()
-test2 <- lapply(1:100000, \(x) pearson_stat(pred_deaths, ext_deaths))
-print(Sys.time() - t)
