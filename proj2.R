@@ -1,6 +1,6 @@
 
 ## File for second project
-setwd("~/Stat-Computing-Group-14")
+# setwd("~/Stat-Computing-Group-14")
 
 # Only using the first 150 rows of the data for this practical.
 initial_data <- read.table("engcov.txt", nrows = 150)
@@ -8,6 +8,7 @@ initial_data <- read.table("engcov.txt", nrows = 150)
 # Define the modified Pearson statistic to use as a metric for the goodness of fit
 # observed_data, simulated_data represent the vectors we are computing the Pearson statistic for 
 pearson_stat_vec <- function(observed_data, simulated_data) {
+
   denom <- simulated_data
   denom[simulated_data <= 1] <- 1
   
@@ -40,6 +41,10 @@ create_t0 <- function(days, deaths, max_duration = 80) {
 }
 
 deconv <- function(t, deaths, n.rep = 100, bs = FALSE, t0 = NULL) {
+  # check inputs for errors
+  if(length(t) != length(deaths)) stop('Vector of days should be the same length as the vector of deaths')
+  if(bs == TRUE & is.null(t0)) stop('If `bs` == TRUE, then supply a converged t0 vector')
+  
   if(is.null(t0)) {
     t0 <- create_t0(t, deaths)
   }
@@ -140,8 +145,9 @@ deconv <- function(t, deaths, n.rep = 100, bs = FALSE, t0 = NULL) {
   )
 }
 
-# just using n.rep = 20 as example
-run <- deconv(initial_data$julian, initial_data$nhs, n.rep = 20)
+
+# just using n.rep = 100 as example
+run <- deconv(initial_data$julian, initial_data$nhs, n.rep = 100)
 
 # create plot - need to add confidence intervals into this once bootstrapping
 cases <- tabulate(run$t0, nbins = 310)
