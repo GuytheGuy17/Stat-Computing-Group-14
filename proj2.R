@@ -60,19 +60,14 @@ deconv <- function(t, deaths, n.rep = 100, bs = FALSE, t0 = NULL) {
   # calculate the probabilities for drawing from later
   probs <- calc_days_to_death_probs()
   
-  # sample random changes
-  rand_change_small <- sample(c(-2, -1, 1, 2), length(t0), replace = TRUE)
-  rand_change_medium <- sample(c(-4, -2, -1, 1, 2, 4), length(t0), replace = TRUE)
-  rand_change_large <- sample(c(-8, -4, -2, -1, 1, 2, 4, 8), length(t0), replace = TRUE)
-  
   for(j in 1:n.rep) {
     # initialize options for days
     if(j <= 50) {
-      days_opt <- rand_change_large
+      days_opt <- c(-8, -4, -2, -1, 1, 2, 4, 8)
     } else if(j <= 75) {
-      days_opt <- rand_change_medium
+      days_opt <- c(-4, -2, -1, 1, 2, 4)
     } else {
-      days_opt <- rand_change_small
+      days_opt <- c(-2, -1, 1, 2)
     }
     
     days_to_death <- sample(1:80, length(t0), replace = TRUE, prob = probs)
@@ -91,13 +86,16 @@ deconv <- function(t, deaths, n.rep = 100, bs = FALSE, t0 = NULL) {
     
     days_to_death_sorted <- days_to_death[ordering]
     
+    # sample random changes
+    rand_change <- sample(days_opt, length(t0), replace = TRUE)
+    
     for(i in 1:length(t0)) {
       # Add 2 new vectors to store the proposed changes
       t0_proposed <- t0_sorted
       pred_deaths_proposed <- pred_deaths
       
       # add random change - don't want to propose a negative number of days so replace with 0
-      t0_proposed[i] <- max(t0_sorted[i] + days_opt[i], 0)
+      t0_proposed[i] <- max(t0_sorted[i] + rand_change[i], 0)
       
       # recalcuate day of death and the previous day of death
       proposed_death_day <- t0_proposed[i] + days_to_death_sorted[i]
@@ -125,12 +123,14 @@ deconv <- function(t, deaths, n.rep = 100, bs = FALSE, t0 = NULL) {
     
     t0 <- t0_sorted[reordering]
     
-    # create plot
-    plot(x = 1:310, y = ext_deaths, type = 'l', xlab = 'Days', ylab = 'Count')
-    lines(x = 1:310, y = tabulate(t0, nbins = 310), col = 'blue')
-    lines(x = 1:310, y = pred_deaths, col = 'red')
-    legend(x = 175, y = 900, legend = c('Estimated Incidence', 'Simulated Deaths', 'Real Deaths'), fill = c('blue', 'red', 'black'))
-    
+    if(j %% 10 == 0) {
+      # create plot
+      plot(x = 1:310, y = ext_deaths, type = 'l', xlab = 'Days', ylab = 'Count')
+      lines(x = 1:310, y = tabulate(t0, nbins = 310), col = 'blue')
+      lines(x = 1:310, y = pred_deaths, col = 'red')
+      legend(x = 175, y = 900, legend = c('Estimated Incidence', 'Simulated Deaths', 'Real Deaths'), fill = c('blue', 'red', 'black'))
+    }
+   
     # save current state of variables
     P_hist[j] <- P
     inft[, j] <- pred_deaths
@@ -144,7 +144,6 @@ deconv <- function(t, deaths, n.rep = 100, bs = FALSE, t0 = NULL) {
     t0 = t0
   )
 }
-
 
 # just using n.rep = 100 as example
 run <- deconv(initial_data$julian, initial_data$nhs, n.rep = 100)
