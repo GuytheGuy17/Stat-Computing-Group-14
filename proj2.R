@@ -8,11 +8,7 @@ initial_data <- read.table("engcov.txt", nrows = 150)
 # Define the modified Pearson statistic to use as a metric for the goodness of fit
 # observed_data, simulated_data represent the vectors we are computing the Pearson statistic for 
 pearson_stat_vec <- function(observed_data, simulated_data) {
-
-  denom <- simulated_data
-  denom[simulated_data <= 1] <- 1
-  
-  return(sum((observed_data - simulated_data) ^ 2 / denom))
+  sum((observed_data - simulated_data) ^ 2 / pmax(simulated_data, 1))
 }
 
 calc_days_to_death_probs <- function(max_duration = 80, meanlog = 3.152, sdlog = 0.451) {
@@ -35,7 +31,7 @@ create_t0 <- function(days, deaths, max_duration = 80) {
   t0 <- death_days - durations
   
   # set negative values to 0
-  t0[t0 <= 0] <- 0
+  t0[t0 <= 1] <- 1
   
   return(t0)
 }
@@ -48,6 +44,8 @@ deconv <- function(t, deaths, n.rep = 100, bs = FALSE, t0 = NULL) {
   if(is.null(t0)) {
     t0 <- create_t0(t, deaths)
   }
+  
+  n <- length(t0)
   
   # extend deaths to 1 to 310 days
   ext_deaths <- numeric(length = 310)
@@ -70,73 +68,70 @@ deconv <- function(t, deaths, n.rep = 100, bs = FALSE, t0 = NULL) {
       days_opt <- c(-2, -1, 1, 2)
     }
     
-    days_to_death <- sample(1:80, length(t0), replace = TRUE, prob = probs)
+    # perform the boostrapping sample
+    if(bs == TRUE) {
+      sim_deaths <- rpois(lengths(ext_deaths), ext_deaths)
+    } else {
+      sim_deaths <- ext_deaths
+    }
+    
+    days_to_death <- sample(1:80, n, replace = TRUE, prob = probs)
     
     # create pred_deaths - nbins 350 to match the length
     pred_deaths <- tabulate(t0 + days_to_death, nbins = 310)
     
-    # calculate the P
-    P <- pearson_stat_vec(ext_deaths, pred_deaths)
-    
-    # sample without replacement to find the random ordering
-    ordering <- sample(1:length(t0), length(t0), replace = FALSE)
-    
-    # sort both vectors in same ordering
-    t0_sorted <- t0[ordering]
-    
-    days_to_death_sorted <- days_to_death[ordering]
+    # calculate the initial pearson statistic in step 4
+    P <- pearson_stat_vec(sim_deaths, pred_deaths)
     
     # sample random changes
-    rand_change <- sample(days_opt, length(t0), replace = TRUE)
+    rand_change <- sample(days_opt, n, replace = TRUE)
     
-    for(i in 1:length(t0)) {
-      # Add 2 new vectors to store the proposed changes
-      t0_proposed <- t0_sorted
-      pred_deaths_proposed <- pred_deaths
-      
+    # Add 2 new vectors to store the proposed changes
+    t0_proposed <- t0
+    pred_deaths_proposed <- pred_deaths
+    
+    # sample 1:n means loop is over in a random order
+    for(i in sample(1:n, n)) {
       # add random change - don't want to propose a negative number of days so replace with 0
-      t0_proposed[i] <- max(t0_sorted[i] + rand_change[i], 0)
+      t0_proposed[i] <- max(t0[i] + rand_change[i], 1)
       
       # recalcuate day of death and the previous day of death
-      proposed_death_day <- t0_proposed[i] + days_to_death_sorted[i]
+      proposed_death_day <- t0_proposed[i] + days_to_death[i]
       
-      old_death_day <- t0_sorted[i] + days_to_death_sorted[i]
+      old_death_day <- t0[i] + days_to_death[i]
       
       # inject these into the predicted deaths
       pred_deaths_proposed[proposed_death_day] <- pred_deaths_proposed[proposed_death_day] + 1
       pred_deaths_proposed[old_death_day] <- pred_deaths_proposed[old_death_day] - 1
       
-      P_proposed <- pearson_stat_vec(ext_deaths, pred_deaths_proposed)
+      # recalculate the pearson statistic
+      P_proposed <- pearson_stat_vec(sim_deaths, pred_deaths_proposed)
       
       # if P_proposed < P then update all our vectors (strictly less than - in case of equality don't update for efficiency)
       if(P_proposed < P) {
         pred_deaths[proposed_death_day] <- pred_deaths_proposed[proposed_death_day]
         pred_deaths[old_death_day] <- pred_deaths_proposed[old_death_day]
-        t0_sorted[i] <- t0_proposed[i]
+        t0[i] <- t0_proposed[i]
         P <- P_proposed
+      } else { # else reset back to old vectors
+        t0_proposed[i] <- t0[i]
+        pred_deaths_proposed[proposed_death_day] <- pred_deaths[proposed_death_day] 
+        pred_deaths_proposed[old_death_day] <- pred_deaths[old_death_day]
       }
     }
     
-    # undo the sorting of t0 and store it
-    reordering <- numeric(length = length(ordering))
-    reordering[ordering] <- 1:length(ordering)
-    
-    t0 <- t0_sorted[reordering]
-    
-    if(j %% 10 == 0) {
+    # only plot each 10 iterations to see the convergence
+    if(j %% 10 == 1 & bs == FALSE) {
       # create plot
       plot(x = 1:310, y = ext_deaths, type = 'l', xlab = 'Days', ylab = 'Count')
       lines(x = 1:310, y = tabulate(t0, nbins = 310), col = 'blue')
       lines(x = 1:310, y = pred_deaths, col = 'red')
       legend(x = 175, y = 900, legend = c('Estimated Incidence', 'Simulated Deaths', 'Real Deaths'), fill = c('blue', 'red', 'black'))
     }
-   
-    # save current state of variables
+    
     P_hist[j] <- P
-    inft[, j] <- pred_deaths
+    inft[, j] <- tabulate(t0, nbins = 310)
   }
-  
-  # produce the plot here
   
   list(
     P = P_hist,
@@ -148,11 +143,25 @@ deconv <- function(t, deaths, n.rep = 100, bs = FALSE, t0 = NULL) {
 # just using n.rep = 100 as example
 run <- deconv(initial_data$julian, initial_data$nhs, n.rep = 100)
 
-# create plot - need to add confidence intervals into this once bootstrapping
+# use the converged t0 with bootstrapping now
+bootstrapped_run <- deconv(initial_data$julian, initial_data$nhs, n.rep = 250, bs = TRUE, t0 = run$t0)
+
+# find the 2.5% and 97.5% of bootstrapped data by day
+confbounds <- apply(bootstrapped_run$inft, 1, function(x) quantile(x, probs = c(0.025, 0.975), names = FALSE))
+
+# calculate cases for the final plot
 cases <- tabulate(run$t0, nbins = 310)
-plot(x = 1:310, y = cases, type = 'l', xlab = 'Days', ylab = 'Count')
+# create the plot
+plot.new()
+plot.window(xlim = c(1, 310), ylim = c(min(confbounds), max(confbounds)))
+axis(1); axis(2); box()
+# add CIs
+polygon(x = c(1:310, 310:1), c(confbounds[1, ], rev(confbounds[2, ])), col = 'grey', border = NA)
+# add the cases according to t0
+lines(x = 1:310, y = cases, type = 'l', xlab = 'Days', ylab = 'Count')
+# add deaths data
 lines(x = initial_data$julian, y = initial_data$nhs, col = 'blue')
 abline(v = 84, lty = 'dashed')
+# make plot readable - add label and legend
 text(x = 84, y = max(cases), labels = 'UK Lockdown', pos = 4)
 legend(x = 310, y = max(cases), legend = c('Estimated Incidences', 'Deaths'), col = c('black', 'blue'), lty = 'solid', xjust = 1, yjust = 1, cex = 0.8)
-
