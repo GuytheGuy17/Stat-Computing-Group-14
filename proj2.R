@@ -1,13 +1,11 @@
-
 ## File for second project
 # setwd("~/Stat-Computing-Group-14")
 
-# Only using the first 150 rows of the data for this practical.
-initial_data <- read.table("engcov.txt", nrows = 150)
+t <- Sys.time()
 
 # Define the modified Pearson statistic to use as a metric for the goodness of fit
 # observed_data, simulated_data represent the vectors we are computing the Pearson statistic for 
-pearson_stat_vec <- function(observed_data, simulated_data) {
+pearson_stat <- function(observed_data, simulated_data) {
   sum((observed_data - simulated_data) ^ 2 / pmax(simulated_data, 1))
 }
 
@@ -39,7 +37,7 @@ create_t0 <- function(days, deaths, max_duration = 80) {
 deconv <- function(t, deaths, n.rep = 100, bs = FALSE, t0 = NULL) {
   # check inputs for errors
   if(length(t) != length(deaths)) stop('Vector of days should be the same length as the vector of deaths')
-  if(bs == TRUE & is.null(t0)) stop('If `bs` == TRUE, then supply a converged t0 vector')
+  if(bs == TRUE & is.null(t0)) stop('If `bs` = TRUE, then supply a converged t0 vector')
   
   if(is.null(t0)) {
     t0 <- create_t0(t, deaths)
@@ -81,7 +79,7 @@ deconv <- function(t, deaths, n.rep = 100, bs = FALSE, t0 = NULL) {
     pred_deaths <- tabulate(t0 + days_to_death, nbins = 310)
     
     # calculate the initial pearson statistic in step 4
-    P <- pearson_stat_vec(sim_deaths, pred_deaths)
+    P <- pearson_stat(sim_deaths, pred_deaths)
     
     # sample random changes
     rand_change <- sample(days_opt, n, replace = TRUE)
@@ -105,7 +103,7 @@ deconv <- function(t, deaths, n.rep = 100, bs = FALSE, t0 = NULL) {
       pred_deaths_proposed[old_death_day] <- pred_deaths_proposed[old_death_day] - 1
       
       # recalculate the pearson statistic
-      P_proposed <- pearson_stat_vec(sim_deaths, pred_deaths_proposed)
+      P_proposed <- pearson_stat(sim_deaths, pred_deaths_proposed)
       
       # if P_proposed < P then update all our vectors (strictly less than - in case of equality don't update for efficiency)
       if(P_proposed < P) {
@@ -140,28 +138,41 @@ deconv <- function(t, deaths, n.rep = 100, bs = FALSE, t0 = NULL) {
   )
 }
 
-# just using n.rep = 100 as example
+# Only using the first 150 rows of the data for this practical.
+initial_data <- read.table("engcov.txt", nrows = 150)
+
+# using n.rep = 100 to get a converged t0
 run <- deconv(initial_data$julian, initial_data$nhs, n.rep = 100)
 
-# use the converged t0 with bootstrapping now
+# use the converged t0 with bootstrapping now, take 250 samples
 bootstrapped_run <- deconv(initial_data$julian, initial_data$nhs, n.rep = 250, bs = TRUE, t0 = run$t0)
 
 # find the 2.5% and 97.5% of bootstrapped data by day
 confbounds <- apply(bootstrapped_run$inft, 1, function(x) quantile(x, probs = c(0.025, 0.975), names = FALSE))
 
 # calculate cases for the final plot
-cases <- tabulate(run$t0, nbins = 310)
+mean_cases <- apply(bootstrapped_run$inft, 1, mean)
 # create the plot
 plot.new()
 plot.window(xlim = c(1, 310), ylim = c(min(confbounds), max(confbounds)))
-axis(1); axis(2); box()
+
+# calculate month breaks
+dates <- as.Date("2019-12-31") + c(1:310)
+break_ind <- which(format(dates, '%d') == '01')
+labels <- format(dates[break_ind], '%b')
+# labels[1] <- paste0(labels[1], ' 2020'); labels[length(labels)] <- paste0(labels[length(labels)], ' 2020')
+
+axis(2); axis(1, labels = labels, at = break_ind); box()
 # add CIs
 polygon(x = c(1:310, 310:1), c(confbounds[1, ], rev(confbounds[2, ])), col = 'grey', border = NA)
 # add the cases according to t0
-lines(x = 1:310, y = cases, type = 'l', xlab = 'Days', ylab = 'Count')
+lines(x = 1:310, y = mean_cases, type = 'l', xlab = 'Days', ylab = 'Count')
 # add deaths data
 lines(x = initial_data$julian, y = initial_data$nhs, col = 'blue')
 abline(v = 84, lty = 'dashed')
 # make plot readable - add label and legend
-text(x = 84, y = max(cases), labels = 'UK Lockdown', pos = 4)
-legend(x = 310, y = max(cases), legend = c('Estimated Incidences', 'Deaths'), col = c('black', 'blue'), lty = 'solid', xjust = 1, yjust = 1, cex = 0.8)
+text(x = 84, y = max(mean_cases), labels = 'UK Lockdown', pos = 4)
+legend(x = 310, y = max(mean_cases), legend = c('Estimated Incidences', 'Deaths'), col = c('black', 'blue'), lty = 'solid', xjust = 1, yjust = 1, cex = 0.8)
+title(main = 'Estimated Fatal Covid-19 Incidences By Day In 2020\nCompared With Deaths By Day', sub = 'Shaded grey region represents a 95% confidence interval', xlab = 'Date')
+
+print(Sys.time() - t)
