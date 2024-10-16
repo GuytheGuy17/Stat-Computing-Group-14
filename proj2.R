@@ -104,7 +104,7 @@ deconv <- function(t, deaths, n.rep = 100, bs = FALSE, t0 = NULL) {
       days_opt <- c(-2, -1, 1, 2)
     }
     
-    # perform the boostrapping sample
+    # perform the bootstrapping sample
     if(bs == TRUE) {
       sim_deaths <- rpois(lengths(ext_deaths), ext_deaths)
     } else {
@@ -113,7 +113,7 @@ deconv <- function(t, deaths, n.rep = 100, bs = FALSE, t0 = NULL) {
     
     days_to_death <- sample(1:80, n, replace = TRUE, prob = probs)
     
-    # create pred_deaths - nbins 350 to match the length
+    # create pred_deaths - nbins 310 to match the length
     pred_deaths <- tabulate(t0 + days_to_death, nbins = 310)
     
     # calculate the initial pearson statistic in step 4
