@@ -1,4 +1,8 @@
-## File for second project
+#' Group Members: 
+#' Guy McClennan - s2036567
+#' Alexandru Girban - s2148980
+#' Louis Bennett - s2744241
+#' 
 # setwd("~/Stat-Computing-Group-14")
 
 t <- Sys.time()
@@ -9,11 +13,30 @@ pearson_stat <- function(observed_data, simulated_data) {
   sum((observed_data - simulated_data) ^ 2 / pmax(simulated_data, 1))
 }
 
+#' calc_days_to_deaths_probs
+#' 
+#' @description Creates a vector of normalized probabilities for how long it takes from
+#' initial infection to death using a log-normal distribution.
+#' @param max_duration The maximum length of infection-to-death duration.
+#' @param meanlog The mean of the log-normal distribution based on previous studies.
+#' @param sdlog The standard deviation of the log-normal distribution based on previous studies.
+#' @return Returns the normalized vector of days-to-death probabilities.
+
+
 calc_days_to_death_probs <- function(max_duration = 80, meanlog = 3.152, sdlog = 0.451) {
   # Set up infection-to-death distribution
   probabilities <- dlnorm(1:max_duration, meanlog, sdlog)
   return(probabilities / sum(probabilities))  # Normalize
 }
+
+#' create_t0
+#' 
+#' @description This function generates a vector t0 of initial guesses for days 
+#' of infection.
+#' @param days A vector of dates of possible infection.
+#' @param deaths A vector deaths on given days.
+#' @param max_duration The maximum length of infection-to-death duration.
+#' @return Returns a vector t0 of that contains initial days of infection estimates.
 
 create_t0 <- function(days, deaths, max_duration = 80) {
   probabilities <- calc_days_to_death_probs(max_duration)
@@ -33,6 +56,21 @@ create_t0 <- function(days, deaths, max_duration = 80) {
   
   return(t0)
 }
+
+#' deconv
+#' 
+#' @description Implements the basic algorithm using the create_t0 and 
+#' calc_days_to_death_probs functions to infer fatal incidence rates from Covid 
+#' deaths in English hospitals.
+#' @param t A vector containing the days of the year on which deaths occurred.
+#' @param deaths A vector containing the number of deaths occurring each day.
+#' @param n.rep The number of times we iterate our fitting. 
+#' @param bs Indicates whether we are using bootstrapping.
+#' @param t0 A converged vector used if we are using bootstrapping.
+#' @return A list containing the vector of Pearson statistic values for each n.rep
+#' iterations, a 310 × n.rep matrix inft, each column of which contains the number 
+#' of new infections per day, according to the state of t0 after each full update 
+#' and an n vector t0 containing the final state of t0.
 
 deconv <- function(t, deaths, n.rep = 100, bs = FALSE, t0 = NULL) {
   # check inputs for errors
