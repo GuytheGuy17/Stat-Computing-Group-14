@@ -113,7 +113,7 @@ deconv <- function(t, deaths, n.rep = 100, bs = FALSE, t0 = NULL) {
     
     # perform the bootstrapping sample
     if(bs == TRUE) {
-      sim_deaths <- rpois(lengths(ext_deaths), ext_deaths)
+      sim_deaths <- rpois(length(ext_deaths), ext_deaths)
     } else {
       sim_deaths <- ext_deaths
     }
@@ -224,26 +224,27 @@ text(x = 84, y = max(mean_cases), labels = 'UK Lockdown', pos = 4)
 legend(x = 310, y = max(mean_cases), legend = c('Estimated Incidences', 'Deaths'), col = c('black', 'blue'), lty = 'solid', xjust = 1, yjust = 1, cex = 0.8)
 title(main = 'Estimated Fatal Covid-19 Incidences By Day In 2020\nCompared With Deaths By Day', sub = 'Shaded grey region represents a 95% confidence interval', xlab = 'Date')
 
-# create the second plot
-# extend deaths to 1 to 310 days
-ext_deaths <- numeric(length = 310)
+# create the plot comparing real and simulated deaths
+# extend deaths to 1 to 230 (230 = 150 + 80 which is the last possible day of death)
+ext_deaths <- numeric(length = 230)
 ext_deaths[initial_data$julian] <- initial_data$nhs
 
 plot.new()
-plot.window(xlim = c(1, 310), ylim = c(min(ext_deaths), max(ext_deaths)))
+plot.window(xlim = c(1, length(ext_deaths)), ylim = c(min(ext_deaths), max(ext_deaths)))
 
 axis(2); axis(1, labels = labels, at = break_ind); box()
 
 # simulate bootstrapped data and plot each
 for(i in 1:100) {
-  sim_deaths <- rpois(lengths(ext_deaths), ext_deaths)
+  sim_deaths <- rpois(length(ext_deaths), ext_deaths)
   
-  lines(x = 1:310, y = sim_deaths, col = 'lightgrey', alpha = 0.2)
+  lines(x = 1:length(ext_deaths), y = sim_deaths, col = 'lightgrey', alpha = 0.2)
 }
 
+
 # add real data
-lines(x = 1:310, y = sim_deaths, col = 'blue')
+lines(x = 1:length(ext_deaths), y = ext_deaths, col = 'blue')
 
 # add title and legend
-legend(x = 310, y = max(ext_deaths), legend = c('Simulated Deaths', 'Real Deaths'), col = c('lightgrey', 'blue'), lty = 'solid', xjust = 1, yjust = 1, cex = 0.8)
+legend(x = length(ext_deaths), y = max(ext_deaths), legend = c('Simulated Deaths', 'Real Deaths'), col = c('lightgrey', 'blue'), lty = 'solid', xjust = 1, yjust = 1, cex = 0.8)
 title(main = 'Comparison Of Simulated Data And Real Deaths Data', xlab = 'Date')
