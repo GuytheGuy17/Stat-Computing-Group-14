@@ -7,6 +7,13 @@
 #'- Guy: Wrote the Pearson statistic, t0 and probability functions. Structured
 #' the code and did commenting. 
 #'- Alex: Optimized the code and implemented bootstrapping.
+#'
+#' The goal of this project is to infer the number of new Covid-19 fatal incidence
+#' rates using data on the number of Covid-19 deaths in English hospitals. 
+#' Infection-to-death durations are modelled using a log-normal distribution and 
+#' the code infers infection rates by back-calculating from death dates using a 
+#' deconvolution approach. Additionally, bootstrapping is used to quantify 
+#' uncertainty in the estimates.
 
 # setwd("~/Stat-Computing-Group-14")
 
@@ -240,7 +247,6 @@ for(i in 1:100) {
   
   lines(x = 1:length(ext_deaths), y = sim_deaths, col = 'lightgrey', alpha = 0.2)
 }
-
 
 # add real data
 lines(x = 1:length(ext_deaths), y = ext_deaths, col = 'blue')
