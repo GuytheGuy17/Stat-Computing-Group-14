@@ -182,7 +182,7 @@ deconv <- function(t, deaths, n.rep = 100, bs = FALSE, t0 = NULL) {
     inft = inft,
     t0 = t0
   )
-
+  
 }
 
 # Only using the first 150 rows of the data for this practical.
