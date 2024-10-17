@@ -10,8 +10,6 @@
 
 # setwd("~/Stat-Computing-Group-14")
 
-t <- Sys.time()
-
 # Define the modified Pearson statistic to use as a metric for the goodness of fit
 # observed_data, simulated_data represent the vectors we are computing the Pearson statistic for 
 pearson_stat <- function(observed_data, simulated_data) {
@@ -76,7 +74,6 @@ create_t0 <- function(days, deaths, max_duration = 80) {
 #' iterations, a 310 × n.rep matrix inft, each column of which contains the number 
 #' of new infections per day, according to the state of t0 after each full update 
 #' and an n vector t0 containing the final state of t0.
-
 
 deconv <- function(t, deaths, n.rep = 100, bs = FALSE, t0 = NULL) {
   # check inputs for errors
@@ -191,15 +188,17 @@ initial_data <- read.table("engcov.txt", nrows = 150)
 # using n.rep = 100 to get a converged t0
 run <- deconv(initial_data$julian, initial_data$nhs, n.rep = 100)
 
-# use the converged t0 with bootstrapping now, take 250 samples
-bootstrapped_run <- deconv(initial_data$julian, initial_data$nhs, n.rep = 250, bs = TRUE, t0 = run$t0)
+# use the converged t0 with bootstrapping now, take 100 samples
+bootstrapped_run <- deconv(initial_data$julian, initial_data$nhs, n.rep = 100, bs = TRUE, t0 = run$t0)
 
 # find the 2.5% and 97.5% of bootstrapped data by day
 confbounds <- apply(bootstrapped_run$inft, 1, function(x) quantile(x, probs = c(0.025, 0.975), names = FALSE))
 
-# calculate cases for the final plot
-mean_cases <- apply(bootstrapped_run$inft, 1, mean)
-# create the plot
+# calculate mean cases for the first plot
+to_average <- run$inft[, run$P <= 150]
+mean_cases <- apply(to_average, 1, mean)
+
+# create the first plot
 plot.new()
 plot.window(xlim = c(1, 310), ylim = c(min(confbounds), max(confbounds)))
 
@@ -207,7 +206,6 @@ plot.window(xlim = c(1, 310), ylim = c(min(confbounds), max(confbounds)))
 dates <- as.Date("2019-12-31") + c(1:310)
 break_ind <- which(format(dates, '%d') == '01')
 labels <- format(dates[break_ind], '%b')
-# labels[1] <- paste0(labels[1], ' 2020'); labels[length(labels)] <- paste0(labels[length(labels)], ' 2020')
 
 axis(2); axis(1, labels = labels, at = break_ind); box()
 # add CIs
@@ -222,6 +220,26 @@ text(x = 84, y = max(mean_cases), labels = 'UK Lockdown', pos = 4)
 legend(x = 310, y = max(mean_cases), legend = c('Estimated Incidences', 'Deaths'), col = c('black', 'blue'), lty = 'solid', xjust = 1, yjust = 1, cex = 0.8)
 title(main = 'Estimated Fatal Covid-19 Incidences By Day In 2020\nCompared With Deaths By Day', sub = 'Shaded grey region represents a 95% confidence interval', xlab = 'Date')
 
+# create the second plot
+# extend deaths to 1 to 310 days
+ext_deaths <- numeric(length = 310)
+ext_deaths[initial_data$julian] <- initial_data$nhs
 
+plot.new()
+plot.window(xlim = c(1, 310), ylim = c(min(ext_deaths), max(ext_deaths)))
 
-print(Sys.time() - t)
+axis(2); axis(1, labels = labels, at = break_ind); box()
+
+# simulate bootstrapped data and plot each
+for(i in 1:100) {
+  sim_deaths <- rpois(lengths(ext_deaths), ext_deaths)
+  
+  lines(x = 1:310, y = sim_deaths, col = 'lightgrey', alpha = 0.2)
+}
+
+# add real data
+lines(x = 1:310, y = sim_deaths, col = 'blue')
+
+# add title and legend
+legend(x = 310, y = max(ext_deaths), legend = c('Simulated Deaths', 'Real Deaths'), col = c('lightgrey', 'blue'), lty = 'solid', xjust = 1, yjust = 1, cex = 0.8)
+title(main = 'Comparison Of Simulated Data And Real Deaths Data', xlab = 'Date')
