@@ -3,6 +3,11 @@
 #' Alexandru Girban - s2148980
 #' Louis Bennett - s2744241
 #' 
+#'- Louis: Wrote the basis of the deconv function and designed the plots.
+#'- Guy: Wrote the Pearson statistic, t0 and probability functions. Structured
+#' the code and did commenting. 
+#'- Alex: Optimized the code and implemented bootstrapping.
+
 # setwd("~/Stat-Computing-Group-14")
 
 t <- Sys.time()
@@ -72,6 +77,7 @@ create_t0 <- function(days, deaths, max_duration = 80) {
 #' of new infections per day, according to the state of t0 after each full update 
 #' and an n vector t0 containing the final state of t0.
 
+
 deconv <- function(t, deaths, n.rep = 100, bs = FALSE, t0 = NULL) {
   # check inputs for errors
   if(length(t) != length(deaths)) stop('Vector of days should be the same length as the vector of deaths')
@@ -126,8 +132,10 @@ deconv <- function(t, deaths, n.rep = 100, bs = FALSE, t0 = NULL) {
     t0_proposed <- t0
     pred_deaths_proposed <- pred_deaths
     
+    sampled_indices <- sample(1:n, n)
+    
     # sample 1:n means loop is over in a random order
-    for(i in sample(1:n, n)) {
+    for(i in sampled_indices) {
       # add random change - don't want to propose a negative number of days so replace with 0
       t0_proposed[i] <- max(t0[i] + rand_change[i], 1)
       
@@ -174,6 +182,7 @@ deconv <- function(t, deaths, n.rep = 100, bs = FALSE, t0 = NULL) {
     inft = inft,
     t0 = t0
   )
+
 }
 
 # Only using the first 150 rows of the data for this practical.
@@ -212,5 +221,7 @@ abline(v = 84, lty = 'dashed')
 text(x = 84, y = max(mean_cases), labels = 'UK Lockdown', pos = 4)
 legend(x = 310, y = max(mean_cases), legend = c('Estimated Incidences', 'Deaths'), col = c('black', 'blue'), lty = 'solid', xjust = 1, yjust = 1, cex = 0.8)
 title(main = 'Estimated Fatal Covid-19 Incidences By Day In 2020\nCompared With Deaths By Day', sub = 'Shaded grey region represents a 95% confidence interval', xlab = 'Date')
+
+
 
 print(Sys.time() - t)
