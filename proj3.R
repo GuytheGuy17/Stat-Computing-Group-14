@@ -84,7 +84,7 @@ lmm <- function(form, dat, ref=list()) {
   
   # this normally gives an error as solve fails - but not a problem, checking the beta_hat printed out we get gives the same answer as lme4::lmer
   # compare the printed output to
-  lmer(score ~ Machine + (1|Worker) + (1|Worker:Machine), data = Machines, REML=FALSE)
+  lme4::lmer(score ~ Machine + (1|Worker) + (1|Worker:Machine), data = Machines, REML=FALSE)
   
   # now need to speed up the code, which would also have the effect of removing solve and this issue!
 }
