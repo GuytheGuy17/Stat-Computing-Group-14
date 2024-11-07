@@ -12,7 +12,7 @@
 #' rates using data on the number of Covid-19 deaths in English hospitals. 
 #' Infection-to-death durations are modelled using a log-normal distribution and 
 #' the code infers infection rates by back-calculating from death dates using a 
-#' deconvolution approach. Additionally, bootstrapping is used to quantify 
+#' deconvolution function. Additionally, bootstrapping is used to quantify 
 #' uncertainty in the estimates.
 
 # setwd("~/Stat-Computing-Group-14")
@@ -35,7 +35,7 @@ pearson_stat <- function(observed_data, simulated_data) {
 #' @param max_duration The maximum length of infection-to-death duration.
 #' @param meanlog The mean of the log-normal distribution based on previous studies.
 #' @param sdlog The standard deviation of the log-normal distribution based on previous studies.
-#' @return Returns the normalized vector of days-to-death probabilities.
+#' @return The normalized vector of days-to-death probabilities.
 
 calc_days_to_death_probs <- function(max_duration = 80, meanlog = 3.152, sdlog = 0.451) {
   # Set up infection-to-death distribution
@@ -50,7 +50,7 @@ calc_days_to_death_probs <- function(max_duration = 80, meanlog = 3.152, sdlog =
 #' @param days A vector of dates of possible infection.
 #' @param deaths A vector deaths on given days.
 #' @param max_duration The maximum length of infection-to-death duration.
-#' @return Returns a vector t0 of that contains initial days of infection estimates.
+#' @return A vector t0 of that contains initial days of infection estimates.
 
 create_t0 <- function(days, deaths, max_duration = 80) {
   probabilities <- calc_days_to_death_probs(max_duration)
