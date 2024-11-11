@@ -17,11 +17,11 @@ LMMsetup <- function(form, dat, ref) {
     
     model.matrix(block_form, dat = dat)
   })
-
+  
   # bind into single matrix Z
   Z <- do.call('cbind', blocks)
   
-  # lengths of blocks - need this to form the psi matrix but likely will drop it when code more efficient way?
+  # lengths of blocks - need this to form the psi matrix later
   lengths <- sapply(blocks, ncol)
   
   X <- model.matrix(form, dat = dat)
@@ -29,29 +29,69 @@ LMMsetup <- function(form, dat, ref) {
   # simulate random theta initial guess
   theta <- rnorm(1 + length(ref))
   
-  # extract y
+  # extracting y
   y <- dat[[all.vars(form)[1]]]
   
   return(list(Z = Z, X = X, theta = theta, y = y, lengths = lengths))
 }
 
 LMMprof <- function(theta, y, Z, X, lengths) {
-  ## long way ! code this more efficiently
+  # extract basic info from the inputs
   sigma <- exp(2 * theta[1])
+  p <- ncol(Z)
+  n <- length(y)
   
-  psi <- diag(rep(theta[-1], lengths))
+  # perform qr decomposition
+  qr <- qr(Z)
+  R <- qr.R(qr)
   
-  W <- solve(Z %*% psi %*% t(Z) + diag(length(y)) * sigma)
+  psi <- diag(rep(exp(2 * theta[-1]), lengths))
   
-  beta <- solve(t(X) %*% W %*% X) %*% t(X) %*% (W %*% y)
+  # form cholesky factor
+  L <- chol(R %*% psi %*% t(R) + diag(p) * sigma)
   
-  # this outputs the beta_hat vector
-  print(beta)
+  # calculate the determinant part of likelihood
+  det_term <- 2 * sum(log(diag(L))) + (n - p) * log(sigma)
   
-  - as.numeric(t(y - X %*% beta) %*% W %*% (y - X %*% beta) + log(det(Z %*% psi %*% t(Z) + diag(length(y)) * sigma))) / 2
+  ## compute Wy
+  # multiplication by t(Q)
+  qty <- qr.qty(qr, y)
+  
+  # block multiplication - 2nd block is simply dividing by sigma
+  qty[(p + 1):n] <- qty[(p + 1):n] / sigma
+  
+  # using the Cholesky decomposition to speed up this multiplication for the 1st block
+  qty[1:p] <- forwardsolve(L, backsolve(L, qty[1:p], transpose = TRUE))
+  
+  # finally, multiplication by Q
+  Wy <- qr.qy(qr, qty)
+  
+  ## compute WX
+  # multiplication by t(Q)
+  qtX <- qr.qty(qr, X)
+  
+  # block multiplication - 2nd block
+  qtX[(p + 1):n, ] <- qtX[(p + 1):n, ] / sigma
+  
+  # same use of Cholesky decomposition as before
+  qtX[1:p, ] <- forwardsolve(L, backsolve(L, qtX[1:p, ], transpose = TRUE))
+  
+  # multiplication by Q
+  WX <- qr.qy(qr, qtX)
+  
+  # use another Cholesky factor to speed up the calculation of beta
+  L2 <- chol(t(X) %*% WX)
+  beta <- forwardsolve(L2, backsolve(L2, (t(X) %*% Wy), transpose = TRUE))
+  
+  # final computation of log likelihood - note we take the positive as we are minimising!
+  loglik <- as.numeric(t(y - X %*% beta) %*% (Wy - WX %*% beta) + det_term) / 2
+  
+  attr(loglik, 'beta') <- beta
+  
+  return(loglik)
 }
 
-lmm <- function(form, dat, ref=list()) {
+lmm <- function(form, dat, ref = list()) {
   ## validating inputs 
   # all elements of ref must be length >= 1
   if(!all(sapply(ref, length)) >= 1) {
@@ -82,9 +122,5 @@ lmm <- function(form, dat, ref=list()) {
     method = 'Nelder-Mead'
   )
   
-  # this normally gives an error as solve fails - but not a problem, checking the beta_hat printed out we get gives the same answer as lme4::lmer
-  # compare the printed output to
-  lme4::lmer(score ~ Machine + (1|Worker) + (1|Worker:Machine), data = Machines, REML=FALSE)
-  
-  # now need to speed up the code, which would also have the effect of removing solve and this issue!
+  return(run$par)
 }
