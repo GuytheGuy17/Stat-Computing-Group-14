@@ -122,5 +122,8 @@ lmm <- function(form, dat, ref = list()) {
     method = 'Nelder-Mead'
   )
   
-  return(run$par)
+  # extract the beta vector too
+  beta <- attr(LMMprof(run$par, y = inits$y, Z = inits$Z, X = inits$X, lengths = inits$lengths), 'beta')
+  
+  return(list(theta = run$par, beta = beta))
 }
