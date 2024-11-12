@@ -41,7 +41,7 @@ LMMprof <- function(theta, y, Z, X, lengths) {
   p <- ncol(Z)
   n <- length(y)
   
-  # perform qr decomposition
+  # perform qr decomposition - from our tests even running 1000 times took less than 1 second so fine to do inside LMMprof
   qr <- qr(Z)
   R <- qr.R(qr)
   
