@@ -24,13 +24,20 @@ LMMsetup <- function(form, dat, ref) {
   # lengths of blocks - need this to form the psi matrix later
   lengths <- sapply(blocks, ncol)
   
+  # handle the no random effects case
+  if(is.null(Z)) {
+    Z <- matrix(nrow = 0, ncol = 0)
+    lengths <- 0
+  }
+  
   X <- model.matrix(form, dat = dat)
   
   # simulate random theta initial guess
   theta <- rnorm(1 + length(ref))
   
   # extracting y
-  y <- dat[[all.vars(form)[1]]]
+  y <- model.response(model.frame(form, dat))
+  # y <-  dat[[all.vars(form)[1]]]
   
   return(list(Z = Z, X = X, theta = theta, y = y, lengths = lengths))
 }
@@ -38,55 +45,67 @@ LMMsetup <- function(form, dat, ref) {
 LMMprof <- function(theta, y, Z, X, lengths) {
   # extract basic info from the inputs
   sigma <- exp(2 * theta[1])
-  p <- ncol(Z)
   n <- length(y)
+  p <- ncol(Z)
   
-  # perform qr decomposition - from our tests even running 1000 times took less than 1 second so fine to do inside LMMprof
-  qr <- qr(Z)
-  R <- qr.R(qr)
+  # handle the case of no random effects
+  if(p == 0) {
+    # if p = 0, simplifies to just the linear model case
+    det_term <- n * log(sigma)
+    
+    # use Cholesky factor to compute multiplication by (t(X) %*% X) ^ -1
+    L <- chol(t(X) %*% X)
+    beta <- backsolve(L, forwardsolve(t(L), t(X) %*% y))
+    
+    loglik <- as.numeric(t(y - X %*% beta) %*% (y - X %*% beta) + det_term) / 2
+  } else {
+    # perform qr decomposition - from our tests even running 1000 times took less than 1 second so fine to do inside LMMprof
+    qr <- qr(Z)
+    R <- qr.R(qr)
+    
+    psi <- diag(rep(exp(2 * theta[-1]), lengths))
+    
+    # form cholesky factor
+    L <- chol(R %*% psi %*% t(R) + diag(p) * sigma)
+    
+    # calculate the determinant part of likelihood
+    det_term <- 2 * sum(log(diag(L))) + (n - p) * log(sigma)
+    
+    ## compute Wy
+    # multiplication by t(Q)
+    qty <- qr.qty(qr, y)
+    
+    # block multiplication - 2nd block is simply dividing by sigma
+    qty[(p + 1):n] <- qty[(p + 1):n] / sigma
+    
+    # using the Cholesky decomposition to speed up this multiplication for the 1st block
+    qty[1:p] <- backsolve(L, forwardsolve(t(L), qty[1:p]))
+    
+    # finally, multiplication by Q
+    Wy <- qr.qy(qr, qty)
+    
+    ## compute WX
+    # multiplication by t(Q)
+    qtX <- qr.qty(qr, X)
+    
+    # block multiplication - 2nd block
+    qtX[(p + 1):n, ] <- qtX[(p + 1):n, ] / sigma
+    
+    # same use of Cholesky decomposition as before
+    qtX[1:p, ] <- backsolve(L, forwardsolve(t(L), qtX[1:p, ]))
+    
+    # multiplication by Q
+    WX <- qr.qy(qr, qtX)
+    
+    # use another Cholesky factor to speed up the calculation of beta
+    L2 <- chol(t(X) %*% WX)
+    beta <- backsolve(L2, forwardsolve(t(L2), t(X) %*% Wy))
+    
+    # final computation of log likelihood - note we take the positive as we are minimising!
+    loglik <- as.numeric(t(y - X %*% beta) %*% (Wy - WX %*% beta) + det_term) / 2
+  }
   
-  psi <- diag(rep(exp(2 * theta[-1]), lengths))
-  
-  # form cholesky factor
-  L <- chol(R %*% psi %*% t(R) + diag(p) * sigma)
-  
-  # calculate the determinant part of likelihood
-  det_term <- 2 * sum(log(diag(L))) + (n - p) * log(sigma)
-  
-  ## compute Wy
-  # multiplication by t(Q)
-  qty <- qr.qty(qr, y)
-  
-  # block multiplication - 2nd block is simply dividing by sigma
-  qty[(p + 1):n] <- qty[(p + 1):n] / sigma
-  
-  # using the Cholesky decomposition to speed up this multiplication for the 1st block
-  qty[1:p] <- forwardsolve(L, backsolve(L, qty[1:p], transpose = TRUE))
-  
-  # finally, multiplication by Q
-  Wy <- qr.qy(qr, qty)
-  
-  ## compute WX
-  # multiplication by t(Q)
-  qtX <- qr.qty(qr, X)
-  
-  # block multiplication - 2nd block
-  qtX[(p + 1):n, ] <- qtX[(p + 1):n, ] / sigma
-  
-  # same use of Cholesky decomposition as before
-  qtX[1:p, ] <- forwardsolve(L, backsolve(L, qtX[1:p, ], transpose = TRUE))
-  
-  # multiplication by Q
-  WX <- qr.qy(qr, qtX)
-  
-  # use another Cholesky factor to speed up the calculation of beta
-  L2 <- chol(t(X) %*% WX)
-  beta <- forwardsolve(L2, backsolve(L2, (t(X) %*% Wy), transpose = TRUE))
-  
-  # final computation of log likelihood - note we take the positive as we are minimising!
-  loglik <- as.numeric(t(y - X %*% beta) %*% (Wy - WX %*% beta) + det_term) / 2
-  
-  attr(loglik, 'beta') <- beta
+  attr(loglik, 'beta') <- as.vector(beta)
   
   return(loglik)
 }
@@ -98,14 +117,34 @@ lmm <- function(form, dat, ref = list()) {
     stop('All the random effects must have length >= 1')
   }
   
-  # all elements in the formula must be in the data
+  # the formula must have at least 2 terms
   vars <- all.vars(form)
+  if (length(vars) < 2) {
+    stop("The formula must include a response variable and at least one predictor.")
+  }
+  
+  # all elements in the formula must be in the data
   if(!all(vars %in% colnames(dat))) {
     stop(paste0('Please ensure all variables are present in the data: `', vars[which(!vars %in% colnames(dat))[1]], '` wasn\'t found.'))
   }
   
-  # make sure dat is a data frame
+  # make sure ref is a list and dat is a data frame
+  ref <- as.list(ref)
   dat <- as.data.frame(dat)
+  
+  # check all random effect variables are present
+  ref_vars <- unique(unlist(ref))
+  if(!all(ref_vars %in% colnames(dat))) {
+    stop(paste0('Please ensure all variables are present in the data: `', ref_vars[which(!ref_vars %in% colnames(dat))[1]], '` wasn\'t found.'))
+  }
+  
+  # remove NA values from dat & check that there are some non NA observations
+  dat <- dat[unique(c(ref_vars, vars))]
+  dat <- na.omit(dat)
+  
+  if(length(dat) == 0) {
+    stop('No non-NA cases found in `dat`')
+  }
   
   # add any others !
   
@@ -122,8 +161,18 @@ lmm <- function(form, dat, ref = list()) {
     method = 'Nelder-Mead'
   )
   
-  # extract the beta vector too
-  beta <- attr(LMMprof(run$par, y = inits$y, Z = inits$Z, X = inits$X, lengths = inits$lengths), 'beta')
+  theta <- run$par
   
-  return(list(theta = run$par, beta = beta))
+  # output the loglikelihood for checking with tests
+  print(paste0('The best loglikelihood found was: ', - round(run$value + length(inits$y) / 2 * log(2 * pi), digits = 3)))
+  
+  # extract the beta vector too
+  beta <- attr(LMMprof(theta, y = inits$y, Z = inits$Z, X = inits$X, lengths = inits$lengths), 'beta')
+  
+  # add labels on both beta and theta
+  names(beta) <- colnames(inits$X)
+  
+  names(theta) <- c('Residual', sapply(ref, \(x) paste(x, collapse = ':')))
+  
+  return(list(theta = theta, beta = beta, stdevs = exp(theta)))
 }
