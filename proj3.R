@@ -63,7 +63,12 @@ LMMprof <- function(theta, y, Z, X, lengths) {
     qr <- qr(Z)
     R <- qr.R(qr)
     
-    psi <- diag(rep(exp(2 * theta[-1]), lengths))
+    # if p = 1 then psi should just be a 1-1 matrix
+    if(p > 1) {
+      psi <- diag(rep(exp(2 * theta[-1]), lengths))
+    } else {
+      psi <- exp(2 * theta[-1])
+    }
     
     # form cholesky factor
     L <- chol(R %*% psi %*% t(R) + diag(p) * sigma)
@@ -117,13 +122,8 @@ lmm <- function(form, dat, ref = list()) {
     stop('All the random effects must have length >= 1')
   }
   
-  # the formula must have at least 2 terms
-  vars <- all.vars(form)
-  if (length(vars) < 2) {
-    stop("The formula must include a response variable and at least one predictor.")
-  }
-  
   # all elements in the formula must be in the data
+  vars <- all.vars(form)
   if(!all(vars %in% colnames(dat))) {
     stop(paste0('Please ensure all variables are present in the data: `', vars[which(!vars %in% colnames(dat))[1]], '` wasn\'t found.'))
   }
