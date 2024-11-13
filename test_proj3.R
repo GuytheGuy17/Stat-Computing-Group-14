@@ -92,3 +92,20 @@ data9 <- generate_random_data(100, 2, 3)
 formula9 <- y ~ X1
 ref_list9 <- list('R1', c("R1", "R2"), 'R3')
 test_lmm(formula9, data9 , ref_list9)
+
+
+## -----
+
+library(haven) 
+
+popular2data <- read_sav(file ="https://github.com/MultiLevelAnalysis/Datasets-third-edition-Multilevel-book/blob/master/chapter%202/popularity/SPSS/popular2.sav?raw=true")
+popular2data <- popular2data[c('pupil', 'class', 'extrav', 'sex', 'texp', 'popular')]
+
+test_lmm(popular ~ sex + extrav + texp, dat = popular2data, ref = list('class'))
+
+
+## ---
+
+lmm.data <- read.table("http://bayes.acs.unt.edu:8083/BayesContent/class/Jon/R_SC/Module9/lmm.data.txt", header=TRUE, sep=",", na.strings="NA", dec=".", strip.white=TRUE)
+
+test_lmm(extro ~ open + agree + social, lmm.data, ref = list('school', c('school', 'class')))
