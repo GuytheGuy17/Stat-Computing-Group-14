@@ -11,7 +11,7 @@
 #' @param form The model formula.
 #' @param dat data frame containing all the variables needed in the model.
 #' @param ref a list of vectors of variable names specifying the random effects for the Zb part of the model
-#' @return The initialized parameters for the mixed linear model, in a list
+#' @return The initialized parameters and necessary variables for the mixed linear model, in a list
 
 LMMsetup <- function(form, dat, ref) {
   # loop over ref, creating the blocks in Z
@@ -49,6 +49,16 @@ LMMsetup <- function(form, dat, ref) {
   
   return(list(Z = Z, X = X, theta = theta, y = y, lengths = lengths))
 }
+
+#' LMMprof
+#' 
+#' @description evaluates the negative log-likelihood for a given theta
+#' @param theta 
+#' @param y response part of model
+#' @param Z model matrix associated with the random effects
+#' @param X predictor part of model
+#' @param lengths length of blocks, needed to form the psi matrix
+#' @return The initialized parameters and necessary variables for the mixed linear model, in a list
 
 LMMprof <- function(theta, y, Z, X, lengths) {
   # extract basic info from the inputs
