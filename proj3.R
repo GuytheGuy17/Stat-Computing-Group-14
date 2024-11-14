@@ -4,6 +4,19 @@
 #' Guy McClennan - s2036567
 #' Alexandru Girban - s2148980
 #' Louis Bennett - s2744241
+#' 
+#'  
+#'- Louis: Designed the LMMsetup function, and implemented the LMMprof in a way that could be parsed
+#' through optim(). Created the shell of the lmm function.
+#'- Guy: Improved the optimization of log-likelihood by dealing with single-variable cases, missing random effects,
+#' completed error-checking and code validation
+#'- Alex: Improved LMMsetup, LMMprof. Added docstrings and structured the code. Handled testing, and derived code 
+#' improvements to the optimization scheme from these.
+#'
+#' The goal of this project is to create an efficient and accurate 
+#' function for simple linear mixed model estimation. This is done using
+#' QR and Cholesky decomposition, log-likelihood computation, and optimization schemes
+#' such as Nelder-Mead.
 
 #' LMMsetup
 #' 
@@ -133,6 +146,14 @@ LMMprof <- function(theta, y, Z, X, lengths) {
   return(loglik)
 }
 
+#' lmm
+#' 
+#' @description Computes the estimates for theta and beta of the linear mixed model specified.
+#' @param form The model formula.
+#' @param dat data frame containing all the variables needed in the model.
+#' @param ref a list of vectors of variable names specifying the random effects for the Zb part of the model
+#' @return A list containing all the relevant estimates 
+
 lmm <- function(form, dat, ref = list()) {
   ## validating inputs 
   # all elements of ref must be length >= 1
@@ -164,10 +185,11 @@ lmm <- function(form, dat, ref = list()) {
     stop('No non-NA cases found in `dat`')
   }
   
-  # add any others !
-  
   inits <- LMMsetup(form, dat, ref)
-  
+  if(ncol(inits$Z) > nrow(inits$Z)){
+    stop("Incompatible dimensions! This function is designed to work when p > n")
+  }
+    
   
   ## Fit optimise function for single variable case
   if((length(inits$theta)) > 1){
@@ -187,18 +209,20 @@ lmm <- function(form, dat, ref = list()) {
     # Single-parameter optimization using optimise
     run <- optimise(
       f = LMMprof,
-      interval = c(1, 1000),
+      # We use the (-32, 32) interval as this yields near-machine precision over the log function approximated
+      interval = c(-32, 32),
       y = inits$y,
       Z = inits$Z,
       X = inits$X,
-      lengths = inits$lengths
+      lengths = inits$lengths,
+      maximum = TRUE
     )
     theta <- run$minimum
     loglik_value <- run$objective
   }
   
   # output the log-likelihood for checking with tests
-  print(paste0('The best loglikelihood found was: ', - round(run$value + length(inits$y) / 2 * log(2 * pi), digits = 3)))
+  print(paste0('The best loglikelihood found was: ', - round(loglik_value + length(inits$y) / 2 * log(2 * pi), digits = 3)))
   
   # extract the beta vector too
   beta <- attr(LMMprof(theta, y = inits$y, Z = inits$Z, X = inits$X, lengths = inits$lengths), 'beta')
@@ -208,5 +232,5 @@ lmm <- function(form, dat, ref = list()) {
   
   names(theta) <- c('Residual', sapply(ref, \(x) paste(x, collapse = ':')))
   
-  return(list(theta = theta, beta = beta, stdevs = exp(theta)))
+  return(list(theta = theta, beta = beta))
 }
