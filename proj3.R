@@ -168,18 +168,34 @@ lmm <- function(form, dat, ref = list()) {
   
   inits <- LMMsetup(form, dat, ref)
   
-  # optimise over theta
-  run <- optim(
-    par = inits$theta,
-    fn = LMMprof,
-    y = inits$y,
-    Z = inits$Z,
-    X = inits$X,
-    lengths = inits$lengths,
-    method = 'Nelder-Mead'
-  )
   
-  theta <- run$par
+  ## Fit optimise function for single variable case
+  if((length(inits$theta)) > 1){
+    # optimise over theta
+    run <- optim(
+      par = inits$theta,
+      fn = LMMprof,
+      y = inits$y,
+      Z = inits$Z,
+      X = inits$X,
+      lengths = inits$lengths,
+      method = 'Nelder-Mead'
+    )
+    theta <- run$par
+    loglik_value <- run$value
+  } else {
+    # Single-parameter optimization using optimise
+    run <- optimise(
+      f = LMMprof,
+      interval = c(1, 1000),
+      y = inits$y,
+      Z = inits$Z,
+      X = inits$X,
+      lengths = inits$lengths
+    )
+    theta <- run$minimum
+    loglik_value <- run$objective
+  }
   
   # output the log-likelihood for checking with tests
   print(paste0('The best loglikelihood found was: ', - round(run$value + length(inits$y) / 2 * log(2 * pi), digits = 3)))
