@@ -5,8 +5,16 @@
 #' Alexandru Girban - s2148980
 #' Louis Bennett - s2744241
 
+#' LMMsetup
+#' 
+#' @description Sets up the matrices involved in the mixed linear model
+#' @param form The model formula.
+#' @param dat data frame containing all the variables needed in the model.
+#' @param ref a list of vectors of variable names specifying the random effects for the Zb part of the model
+#' @return The initialized parameters for the mixed linear model, in a list
+
 LMMsetup <- function(form, dat, ref) {
-  # lopp over ref, creating the blocks in Z
+  # loop over ref, creating the blocks in Z
   blocks <- lapply(ref, \(x) {
     # if length is 1, just take the term
     if(length(x) == 1) {
@@ -59,7 +67,7 @@ LMMprof <- function(theta, y, Z, X, lengths) {
     
     loglik <- as.numeric(t(y - X %*% beta) %*% (y - X %*% beta) + det_term) / 2
   } else {
-    # perform qr decomposition - from our tests even running 1000 times took less than 1 second so fine to do inside LMMprof
+    # perform QR decomposition - from our tests even running 1000 times took less than 1 second so fine to do inside LMMprof
     qr <- qr(Z)
     R <- qr.R(qr)
     
@@ -70,7 +78,7 @@ LMMprof <- function(theta, y, Z, X, lengths) {
       psi <- exp(2 * theta[-1])
     }
     
-    # form cholesky factor
+    # form Cholesky factor
     L <- chol(R %*% psi %*% t(R) + diag(p) * sigma)
     
     # calculate the determinant part of likelihood
@@ -106,7 +114,7 @@ LMMprof <- function(theta, y, Z, X, lengths) {
     L2 <- chol(t(X) %*% WX)
     beta <- backsolve(L2, forwardsolve(t(L2), t(X) %*% Wy))
     
-    # final computation of log likelihood - note we take the positive as we are minimising!
+    # final computation of log-likelihood - note we take the positive as we are minimising!
     loglik <- as.numeric(t(y - X %*% beta) %*% (Wy - WX %*% beta) + det_term) / 2
   }
   
@@ -163,7 +171,7 @@ lmm <- function(form, dat, ref = list()) {
   
   theta <- run$par
   
-  # output the loglikelihood for checking with tests
+  # output the log-likelihood for checking with tests
   print(paste0('The best loglikelihood found was: ', - round(run$value + length(inits$y) / 2 * log(2 * pi), digits = 3)))
   
   # extract the beta vector too
