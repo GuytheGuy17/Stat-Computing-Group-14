@@ -217,7 +217,7 @@ lmm <- function(form, dat, ref = list()) {
       lengths = inits$lengths,
       maximum = TRUE
     )
-    theta <- run$minimum
+    theta <- run$maximum
     loglik_value <- run$objective
   }
   
